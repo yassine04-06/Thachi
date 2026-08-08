@@ -24,6 +24,7 @@ fun BrowseSourceList(
     onMangaLongClick: (Manga) -> Unit,
     chapterCounts: Map<Long, Int?> = emptyMap(),
     onRequestChapterCount: (Manga) -> Unit = {},
+    minChapterCount: Int? = null,
 ) {
     LazyColumn(
         contentPadding = contentPadding + PaddingValues(vertical = 8.dp),
@@ -40,6 +41,7 @@ fun BrowseSourceList(
                 manga = manga,
                 chapterCount = chapterCounts[manga.id],
                 isChapterCountRequested = chapterCounts.containsKey(manga.id),
+                minChapterCount = minChapterCount,
                 onClick = { onMangaClick(manga) },
                 onLongClick = { onMangaLongClick(manga) },
                 onRequestChapterCount = { onRequestChapterCount(manga) },
@@ -59,16 +61,21 @@ private fun BrowseSourceListItem(
     manga: Manga,
     chapterCount: Int?,
     isChapterCountRequested: Boolean,
+    minChapterCount: Int?,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = onClick,
     onRequestChapterCount: () -> Unit = {},
 ) {
     // Auto-request the chapter count as soon as this item is composed (i.e. scrolled
-    // into view, since LazyColumn only composes items near the viewport).
+    // into view, since LazyColumn only composes items near the viewport). Always runs, even
+    // while hidden by minChapterCount below, so the filter can keep discovering matches as
+    // covers scroll past instead of only working within an already-checked set.
     // Requests are still throttled in BrowseSourceViewModel so this doesn't burst the source.
     LaunchedEffect(manga.id) {
         onRequestChapterCount()
     }
+
+    if (!matchesMinChapterCount(chapterCount, minChapterCount)) return
 
     MangaListItem(
         title = manga.title,

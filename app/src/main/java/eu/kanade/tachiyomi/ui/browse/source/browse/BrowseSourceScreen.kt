@@ -3,35 +3,46 @@ package eu.kanade.tachiyomi.ui.browse.source.browse
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.NewReleases
+import androidx.compose.material.icons.outlined.Numbers
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -111,6 +122,8 @@ data class BrowseSourceScreen(
         val haptic = LocalHapticFeedback.current
         val uriHandler = LocalUriHandler.current
         val snackbarHostState = remember { SnackbarHostState() }
+        var chapterFilterMenuExpanded by remember { mutableStateOf(false) }
+        var showCustomChapterFilterDialog by remember { mutableStateOf(false) }
 
         val onHelpClick = { uriHandler.openUri(LocalSource.HELP_URL) }
         val onWebViewClick = f@{
@@ -209,6 +222,56 @@ data class BrowseSourceScreen(
                                 },
                             )
                         }
+                        Box {
+                            FilterChip(
+                                selected = viewModel.minChapterCount != null,
+                                onClick = { chapterFilterMenuExpanded = true },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Numbers,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(FilterChipDefaults.IconSize),
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = viewModel.minChapterCount?.let { "Min. capitoli: $it+" }
+                                            ?: "Min. capitoli",
+                                    )
+                                },
+                            )
+                            DropdownMenu(
+                                expanded = chapterFilterMenuExpanded,
+                                onDismissRequest = { chapterFilterMenuExpanded = false },
+                            ) {
+                                listOf(20, 50, 100).forEach { preset ->
+                                    DropdownMenuItem(
+                                        text = { Text("$preset+ capitoli") },
+                                        onClick = {
+                                            viewModel.minChapterCount = preset
+                                            chapterFilterMenuExpanded = false
+                                        },
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text("Personalizzato…") },
+                                    onClick = {
+                                        chapterFilterMenuExpanded = false
+                                        showCustomChapterFilterDialog = true
+                                    },
+                                )
+                                if (viewModel.minChapterCount != null) {
+                                    DropdownMenuItem(
+                                        text = { Text("Rimuovi filtro") },
+                                        onClick = {
+                                            viewModel.minChapterCount = null
+                                            chapterFilterMenuExpanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     HorizontalDivider()
@@ -242,6 +305,38 @@ data class BrowseSourceScreen(
                 },
                 chapterCounts = viewModel.chapterCounts,
                 onRequestChapterCount = viewModel::fetchChapterCount,
+                minChapterCount = viewModel.minChapterCount,
+            )
+        }
+
+        if (showCustomChapterFilterDialog) {
+            var customValue by remember { mutableStateOf(viewModel.minChapterCount?.toString().orEmpty()) }
+            AlertDialog(
+                onDismissRequest = { showCustomChapterFilterDialog = false },
+                title = { Text("Numero minimo di capitoli") },
+                text = {
+                    OutlinedTextField(
+                        value = customValue,
+                        onValueChange = { customValue = it.filter(Char::isDigit) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.minChapterCount = customValue.toIntOrNull()
+                            showCustomChapterFilterDialog = false
+                        },
+                    ) {
+                        Text(stringResource(MR.strings.action_ok))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCustomChapterFilterDialog = false }) {
+                        Text(stringResource(MR.strings.action_cancel))
+                    }
+                },
             )
         }
 

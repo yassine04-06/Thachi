@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
@@ -104,6 +105,14 @@ class BrowseSourceViewModel(
      * instead of bursting one request per visible item at once.
      */
     val chapterCounts = mutableStateMapOf<Long, Int?>()
+
+    /**
+     * Client-side "at least N chapters" filter applied on top of [chapterCounts].
+     * Not a source-level filter: the source's own search/filter API has no concept of chapter
+     * count, so this only narrows what's shown among manga whose count is already known (or
+     * becomes known as covers keep scrolling into view and get auto-checked). Null means off.
+     */
+    var minChapterCount by mutableStateOf<Int?>(null)
 
     /**
      * Caps how many chapter-count fetches run at the same time. The source itself may also

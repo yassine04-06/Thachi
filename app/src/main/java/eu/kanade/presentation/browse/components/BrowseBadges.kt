@@ -14,6 +14,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import tachiyomi.presentation.core.components.Badge
 
+/**
+ * Whether a manga passes the client-side "at least N chapters" browse filter.
+ * [minChapterCount] null means the filter is off (everything matches). Otherwise a manga
+ * only matches once its chapter count is known (not null/loading) and successfully
+ * resolved (not [BrowseSourceViewModel.CHAPTER_COUNT_FAILED]) and meets the threshold —
+ * manga not yet checked are excluded rather than assumed to match.
+ */
+internal fun matchesMinChapterCount(chapterCount: Int?, minChapterCount: Int?): Boolean {
+    if (minChapterCount == null) return true
+    if (chapterCount == null || chapterCount < 0) return false
+    return chapterCount >= minChapterCount
+}
+
 @Composable
 internal fun InLibraryBadge(enabled: Boolean) {
     if (enabled) {

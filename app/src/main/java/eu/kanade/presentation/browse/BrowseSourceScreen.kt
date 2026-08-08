@@ -50,6 +50,7 @@ fun BrowseSourceContent(
     onMangaLongClick: (Manga) -> Unit,
     chapterCounts: Map<Long, Int?> = emptyMap(),
     onRequestChapterCount: (Manga) -> Unit = {},
+    minChapterCount: Int? = null,
 ) {
     val context = LocalContext.current
 
@@ -128,6 +129,7 @@ fun BrowseSourceContent(
                 onMangaLongClick = onMangaLongClick,
                 chapterCounts = chapterCounts,
                 onRequestChapterCount = onRequestChapterCount,
+                minChapterCount = minChapterCount,
             )
         }
         LibraryDisplayMode.List -> {
@@ -138,6 +140,7 @@ fun BrowseSourceContent(
                 onMangaLongClick = onMangaLongClick,
                 chapterCounts = chapterCounts,
                 onRequestChapterCount = onRequestChapterCount,
+                minChapterCount = minChapterCount,
             )
         }
         LibraryDisplayMode.CompactGrid, LibraryDisplayMode.CoverOnlyGrid -> {
@@ -149,6 +152,7 @@ fun BrowseSourceContent(
                 onMangaLongClick = onMangaLongClick,
                 chapterCounts = chapterCounts,
                 onRequestChapterCount = onRequestChapterCount,
+                minChapterCount = minChapterCount,
             )
         }
     }
