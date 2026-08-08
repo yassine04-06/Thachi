@@ -136,6 +136,8 @@ fun BrowseSourceContent(
                 contentPadding = contentPadding,
                 onMangaClick = onMangaClick,
                 onMangaLongClick = onMangaLongClick,
+                chapterCounts = chapterCounts,
+                onRequestChapterCount = onRequestChapterCount,
             )
         }
         LibraryDisplayMode.CompactGrid, LibraryDisplayMode.CoverOnlyGrid -> {
@@ -145,6 +147,8 @@ fun BrowseSourceContent(
                 contentPadding = contentPadding,
                 onMangaClick = onMangaClick,
                 onMangaLongClick = onMangaLongClick,
+                chapterCounts = chapterCounts,
+                onRequestChapterCount = onRequestChapterCount,
             )
         }
     }

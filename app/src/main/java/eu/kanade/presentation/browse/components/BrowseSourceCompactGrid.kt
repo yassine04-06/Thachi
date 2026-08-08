@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
@@ -25,6 +26,8 @@ fun BrowseSourceCompactGrid(
     contentPadding: PaddingValues,
     onMangaClick: (Manga) -> Unit,
     onMangaLongClick: (Manga) -> Unit,
+    chapterCounts: Map<Long, Int?> = emptyMap(),
+    onRequestChapterCount: (Manga) -> Unit = {},
 ) {
     LazyVerticalGrid(
         columns = columns,
@@ -42,8 +45,11 @@ fun BrowseSourceCompactGrid(
             val manga by mangaList[index]?.collectAsState() ?: return@items
             BrowseSourceCompactGridItem(
                 manga = manga,
+                chapterCount = chapterCounts[manga.id],
+                isChapterCountRequested = chapterCounts.containsKey(manga.id),
                 onClick = { onMangaClick(manga) },
                 onLongClick = { onMangaLongClick(manga) },
+                onRequestChapterCount = { onRequestChapterCount(manga) },
             )
         }
 
@@ -58,9 +64,19 @@ fun BrowseSourceCompactGrid(
 @Composable
 private fun BrowseSourceCompactGridItem(
     manga: Manga,
+    chapterCount: Int?,
+    isChapterCountRequested: Boolean,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = onClick,
+    onRequestChapterCount: () -> Unit = {},
 ) {
+    // Auto-request the chapter count as soon as this item is composed (i.e. scrolled
+    // into view, since LazyVerticalGrid only composes items near the viewport).
+    // Requests are still throttled in BrowseSourceViewModel so this doesn't burst the source.
+    LaunchedEffect(manga.id) {
+        onRequestChapterCount()
+    }
+
     MangaCompactGridItem(
         title = manga.title,
         coverData = MangaCover(
@@ -73,6 +89,13 @@ private fun BrowseSourceCompactGridItem(
         coverAlpha = if (manga.favorite) CommonMangaItemDefaults.BrowseFavoriteCoverAlpha else 1f,
         coverBadgeStart = {
             InLibraryBadge(enabled = manga.favorite)
+        },
+        coverBadgeEnd = {
+            ChapterCountBadge(
+                chapterCount = chapterCount,
+                isRequested = isChapterCountRequested,
+                onClick = onRequestChapterCount,
+            )
         },
         onLongClick = onLongClick,
         onClick = onClick,
