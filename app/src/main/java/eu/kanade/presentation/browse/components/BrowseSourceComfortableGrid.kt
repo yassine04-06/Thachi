@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
@@ -69,6 +70,13 @@ private fun BrowseSourceComfortableGridItem(
     onLongClick: () -> Unit = onClick,
     onRequestChapterCount: () -> Unit = {},
 ) {
+    // Auto-request the chapter count as soon as this item is composed (i.e. scrolled
+    // into view, since LazyVerticalGrid only composes items near the viewport).
+    // Requests are still throttled in BrowseSourceViewModel so this doesn't burst the source.
+    LaunchedEffect(manga.id) {
+        onRequestChapterCount()
+    }
+
     MangaComfortableGridItem(
         title = manga.title,
         coverData = MangaCover(

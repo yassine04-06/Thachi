@@ -24,8 +24,9 @@ internal fun InLibraryBadge(enabled: Boolean) {
 }
 
 /**
- * Badge showing the manga's chapter count, fetched on demand when tapped.
- * - Not yet requested: shows a "chapters?" prompt.
+ * Badge showing the manga's chapter count, fetched automatically as the cover scrolls
+ * into view (throttled in BrowseSourceViewModel), and re-triggerable by tapping.
+ * - Not yet requested: shows a "chapters?" prompt (brief, until the auto-fetch kicks in).
  * - Requested and loading: shows a small spinner.
  * - Loaded: shows the chapter count.
  * - Failed: shows a dash, tappable again to retry.

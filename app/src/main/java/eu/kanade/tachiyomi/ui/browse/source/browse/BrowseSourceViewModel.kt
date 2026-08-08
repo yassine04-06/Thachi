@@ -33,6 +33,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import mihon.core.viewmodel.StateViewModel
 import tachiyomi.core.common.preference.CheckboxState
 import tachiyomi.core.common.preference.mapAsCheckboxState
@@ -92,19 +94,26 @@ class BrowseSourceViewModel(
     val source = sourceManager.getOrStub(sourceId)
 
     /**
-     * On-demand chapter count cache, keyed by manga id.
+     * Chapter count cache, keyed by manga id.
      * - Missing key: not requested yet.
      * - Value null: currently loading.
      * - Value CHAPTER_COUNT_FAILED (-1): the fetch failed.
      * - Value >= 0: the resolved chapter count.
-     * Populated only when the user explicitly asks for a manga's chapter count
-     * (e.g. tapping the chapter-count badge), never automatically for the whole list,
-     * to avoid hammering the source with a request per visible item.
+     * Requested automatically as covers scroll into view (see BrowseSourceComfortableGrid),
+     * but throttled through [chapterCountFetchSemaphore] so it trickles a few at a time
+     * instead of bursting one request per visible item at once.
      */
     val chapterCounts = mutableStateMapOf<Long, Int?>()
 
     /**
-     * Fetches (and caches) the chapter count for a single manga on demand.
+     * Caps how many chapter-count fetches run at the same time. The source itself may also
+     * rate-limit (e.g. ManhwaZ limits to ~2 req/s), this just keeps us from firing a request
+     * per grid item all at once when a page of results first loads.
+     */
+    private val chapterCountFetchSemaphore = Semaphore(3)
+
+    /**
+     * Fetches (and caches) the chapter count for a single manga.
      * Safe to call repeatedly; skips the network call if already loading/loaded.
      */
     fun fetchChapterCount(manga: Manga) {
@@ -112,15 +121,17 @@ class BrowseSourceViewModel(
         if (chapterCounts.containsKey(manga.id) && existing != CHAPTER_COUNT_FAILED) return
         chapterCounts[manga.id] = null
         viewModelScope.launchIO {
-            val count = runCatching {
-                source.getMangaUpdate(
-                    manga = manga.toSManga(),
-                    chapters = emptyList(),
-                    fetchDetails = false,
-                    fetchChapters = true,
-                ).chapters.size
-            }.getOrDefault(CHAPTER_COUNT_FAILED)
-            chapterCounts[manga.id] = count
+            chapterCountFetchSemaphore.withPermit {
+                val count = runCatching {
+                    source.getMangaUpdate(
+                        manga = manga.toSManga(),
+                        chapters = emptyList(),
+                        fetchDetails = false,
+                        fetchChapters = true,
+                    ).chapters.size
+                }.getOrDefault(CHAPTER_COUNT_FAILED)
+                chapterCounts[manga.id] = count
+            }
         }
     }
 
