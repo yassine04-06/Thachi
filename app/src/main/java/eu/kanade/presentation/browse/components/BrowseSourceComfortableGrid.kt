@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
@@ -42,13 +41,20 @@ fun BrowseSourceComfortableGrid(
             }
         }
 
-        items(count = mangaList.itemCount) { index ->
+        // Pre-filter by index (peek doesn't trigger Paging's prefetch, unlike get/[]) so the
+        // grid only allocates slots for matches - no empty cells left behind by hidden manga.
+        val visibleIndices = (0 until mangaList.itemCount).filter { index ->
+            val chapterCount = mangaList.peek(index)?.value?.let { chapterCounts[it.id] }
+            matchesMinChapterCount(chapterCount, minChapterCount)
+        }
+
+        items(count = visibleIndices.size, key = { visibleIndices[it] }) { i ->
+            val index = visibleIndices[i]
             val manga by mangaList[index]?.collectAsState() ?: return@items
             BrowseSourceComfortableGridItem(
                 manga = manga,
                 chapterCount = chapterCounts[manga.id],
                 isChapterCountRequested = chapterCounts.containsKey(manga.id),
-                minChapterCount = minChapterCount,
                 onClick = { onMangaClick(manga) },
                 onLongClick = { onMangaLongClick(manga) },
                 onRequestChapterCount = { onRequestChapterCount(manga) },
@@ -68,22 +74,10 @@ private fun BrowseSourceComfortableGridItem(
     manga: Manga,
     chapterCount: Int?,
     isChapterCountRequested: Boolean,
-    minChapterCount: Int?,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = onClick,
     onRequestChapterCount: () -> Unit = {},
 ) {
-    // Auto-request the chapter count as soon as this item is composed (i.e. scrolled
-    // into view, since LazyVerticalGrid only composes items near the viewport). Always runs,
-    // even while hidden by minChapterCount below, so the filter can keep discovering matches
-    // as covers scroll past instead of only working within an already-checked set.
-    // Requests are still throttled in BrowseSourceViewModel so this doesn't burst the source.
-    LaunchedEffect(manga.id) {
-        onRequestChapterCount()
-    }
-
-    if (!matchesMinChapterCount(chapterCount, minChapterCount)) return
-
     MangaComfortableGridItem(
         title = manga.title,
         coverData = MangaCover(

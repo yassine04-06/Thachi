@@ -61,6 +61,18 @@ fun BrowseSourceContent(
         with(context) { state.error.formattedMessage }
     }
 
+    // Auto-request chapter counts for every manga Paging has currently loaded, independent of
+    // which grid items are actually composed/visible. This decouples fetching from rendering
+    // so the min-chapters filter below can compact the grid (skip filtered-out items entirely,
+    // no gaps) without starving itself of the data it needs to discover new matches.
+    // Still bounded by how many manga Paging has loaded so far (roughly a page or two ahead of
+    // scroll position, not the whole catalog), and fetchChapterCount no-ops for repeats.
+    LaunchedEffect(mangaList.itemCount) {
+        for (index in 0 until mangaList.itemCount) {
+            mangaList.peek(index)?.value?.let(onRequestChapterCount)
+        }
+    }
+
     LaunchedEffect(errorState) {
         if (mangaList.itemCount > 0 && errorState != null && errorState is LoadState.Error) {
             val result = snackbarHostState.showSnackbar(

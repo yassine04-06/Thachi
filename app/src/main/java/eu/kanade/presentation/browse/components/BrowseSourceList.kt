@@ -3,7 +3,6 @@ package eu.kanade.presentation.browse.components
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
@@ -35,13 +34,20 @@ fun BrowseSourceList(
             }
         }
 
-        items(count = mangaList.itemCount) { index ->
+        // Pre-filter by index (peek doesn't trigger Paging's prefetch, unlike get/[]) so
+        // filtered-out manga aren't composed at all rather than just rendering nothing.
+        val visibleIndices = (0 until mangaList.itemCount).filter { index ->
+            val chapterCount = mangaList.peek(index)?.value?.let { chapterCounts[it.id] }
+            matchesMinChapterCount(chapterCount, minChapterCount)
+        }
+
+        items(count = visibleIndices.size, key = { visibleIndices[it] }) { i ->
+            val index = visibleIndices[i]
             val manga by mangaList[index]?.collectAsState() ?: return@items
             BrowseSourceListItem(
                 manga = manga,
                 chapterCount = chapterCounts[manga.id],
                 isChapterCountRequested = chapterCounts.containsKey(manga.id),
-                minChapterCount = minChapterCount,
                 onClick = { onMangaClick(manga) },
                 onLongClick = { onMangaLongClick(manga) },
                 onRequestChapterCount = { onRequestChapterCount(manga) },
@@ -61,22 +67,10 @@ private fun BrowseSourceListItem(
     manga: Manga,
     chapterCount: Int?,
     isChapterCountRequested: Boolean,
-    minChapterCount: Int?,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = onClick,
     onRequestChapterCount: () -> Unit = {},
 ) {
-    // Auto-request the chapter count as soon as this item is composed (i.e. scrolled
-    // into view, since LazyColumn only composes items near the viewport). Always runs, even
-    // while hidden by minChapterCount below, so the filter can keep discovering matches as
-    // covers scroll past instead of only working within an already-checked set.
-    // Requests are still throttled in BrowseSourceViewModel so this doesn't burst the source.
-    LaunchedEffect(manga.id) {
-        onRequestChapterCount()
-    }
-
-    if (!matchesMinChapterCount(chapterCount, minChapterCount)) return
-
     MangaListItem(
         title = manga.title,
         coverData = MangaCover(
